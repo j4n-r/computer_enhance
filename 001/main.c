@@ -8,13 +8,16 @@
 enum op_c {
     mov_r_r = 0b100010,
     mov_i_r = 0b1011,
-};
-const char* MOD_W1_NAMES[] = {"ax", "cx", "dx", "bx", "sp", "bp", "si", "di"};
-const char* MOD_W0_NAMES[] = {"al", "cl", "dl", "bl", "ah", "ch", "dh", "bh"};
 
-const char* MOD_00_NAMES[] = {"[bx + si]",      "[bx + di]", "[bp + si]",
-                              "[bp + di]",      "[si]",      "[di]",
-                              "DIRECT ADDRESS", "[bx]"};
+};
+
+// if MOD = 11 these are the same for r/m
+const char* REG_W0_NAMES[] = {"al", "cl", "dl", "bl", "ah", "ch", "dh", "bh"};
+const char* REG_W1_NAMES[] = {"ax", "cx", "dx", "bx", "sp", "bp", "si", "di"};
+
+const char* RM_00_NAMES[] = {"[bx + si]",      "[bx + di]", "[bp + si]",
+                             "[bp + di]",      "[si]",      "[di]",
+                             "DIRECT ADDRESS", "[bx]"};
 const char* MOD_01_10_NAMES[] = {"[bx + si ", "[bx + di ", "[bp + si ",
                                  "[bp + di ", "[si + ",    "[di + ",
                                  "[bp + ",    "[bx + "};
@@ -76,16 +79,18 @@ int decodeASM(unsigned char* buffer, size_t size) {
 
             switch (mod) {
             case 0b00:
-                strcpy(r_m_s, MOD_00_NAMES[r_m]);
+                strcpy(r_m_s, RM_00_NAMES[r_m]);
             case 0b11:
-                const char** mod_names = (w == 0) ? MOD_W0_NAMES : MOD_W1_NAMES;
+                const char** mod_names = (w == 0) ? REG_W0_NAMES : REG_W1_NAMES;
                 strcpy(reg_s, mod_names[r_m]);
                 strcpy(r_m_s, mod_names[reg]);
                 break;
             }
 
-            char* dst = (d == 0) ? reg_s : r_m_s;
-            char* src = (d == 0) ? r_m_s : reg_s;
+            // CHECK THIS!!!!!!
+            // the src and dst are swapped but this should be right
+            char* src = (d == 0) ? reg_s : r_m_s;
+            char* dst = (d == 0) ? r_m_s : reg_s;
             strcpy(src_s, src);
             strcpy(dst_s, dst);
 
@@ -97,12 +102,12 @@ int decodeASM(unsigned char* buffer, size_t size) {
 
             char tmp[10];
             if (w == 0) {
-                strcpy(dst_s, MOD_W0_NAMES[reg]);
+                strcpy(dst_s, REG_W0_NAMES[reg]);
                 uint8_t data = buffer[i + 1];
                 sprintf(tmp, "%d", data);
                 strcpy(src_s, tmp);
             } else {
-                strcpy(dst_s, MOD_W1_NAMES[reg]);
+                strcpy(dst_s, REG_W1_NAMES[reg]);
                 uint16_t data = buffer[i + 1] | (uint16_t)buffer[i + 2] << 8;
                 i++;
                 sprintf(tmp, "%d", data);
