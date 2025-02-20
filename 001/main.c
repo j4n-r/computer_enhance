@@ -1,15 +1,23 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-const char* MOD_W0_NAMES[] = {"al", "cl", "dl", "bl", "ah", "ch", "dh", "bh"};
-
 enum op_c {
-    mov = 0b100010,
+    mov_r_r = 0b100010,
+    mov_i_r = 0b1011,
 };
 const char* MOD_W1_NAMES[] = {"ax", "cx", "dx", "bx", "sp", "bp", "si", "di"};
+const char* MOD_W0_NAMES[] = {"al", "cl", "dl", "bl", "ah", "ch", "dh", "bh"};
+
+const char* MOD_00_NAMES[] = {"[bx + si]",      "[bx + di]", "[bp + si]",
+                              "[bp + di]",      "[si]",      "[di]",
+                              "DIRECT ADDRESS", "[bx]"};
+const char* MOD_01_10_NAMES[] = {"[bx + si ", "[bx + di ", "[bp + si ",
+                                 "[bp + di ", "[si + ",    "[di + ",
+                                 "[bp + ",    "[bx + "};
 
 unsigned char* openFile(const char* fileName, size_t* fileSize) {
     FILE* file = fopen(fileName, "rb");
@@ -49,37 +57,63 @@ int decodeASM(unsigned char* buffer, size_t size) {
     fprintf(file, "bits 16\n\n");
 
     for (size_t i = 0; i < size; i += 2) {
-        int w = buffer[i] & 1;
-        int d = (buffer[i] >> 1) & 1;
-        enum op_c op = buffer[i] >> 2;
+        char op_c[4];
+        char dst_s[10];
+        char src_s[10];
 
-        switch (op) {
-        case mov:
-            printf("mov ");
-            fprintf(file, "mov ");
-            break;
-        default:
+        uint8_t w = buffer[i] & 1;
+        uint8_t d = (buffer[i] >> 1) & 1;
+
+        // Register-to-register
+        if ((buffer[i] >> 2) == mov_r_r) {
+            strcpy(op_c, "mov");
+            uint8_t reg = (buffer[i + 1] >> 3) & 0b111;
+            uint8_t r_m = buffer[i + 1] & 0b111;
+            uint8_t mod = buffer[i + 1] >> 6 & 0b11;
+
+            char reg_s[10];
+            char r_m_s[10];
+
+            switch (mod) {
+            case 0b00:
+                strcpy(r_m_s, MOD_00_NAMES[r_m]);
+            case 0b11:
+                const char** mod_names = (w == 0) ? MOD_W0_NAMES : MOD_W1_NAMES;
+                strcpy(reg_s, mod_names[r_m]);
+                strcpy(r_m_s, mod_names[reg]);
+                break;
+            }
+
+            char* dst = (d == 0) ? reg_s : r_m_s;
+            char* src = (d == 0) ? r_m_s : reg_s;
+            strcpy(src_s, src);
+            strcpy(dst_s, dst);
+
+            // Immediate-to-register
+        } else if ((buffer[i] >> 4) == mov_i_r) {
+            strcpy(op_c, "mov");
+            uint8_t w = buffer[i] >> 3 & 0b1;
+            uint8_t reg = buffer[i] & 0b111;
+
+            char tmp[10];
+            if (w == 0) {
+                strcpy(dst_s, MOD_W0_NAMES[reg]);
+                uint8_t data = buffer[i + 1];
+                sprintf(tmp, "%d", data);
+                strcpy(src_s, tmp);
+            } else {
+                strcpy(dst_s, MOD_W1_NAMES[reg]);
+                uint16_t data = buffer[i + 1] | (uint16_t)buffer[i + 2] << 8;
+                i++;
+                sprintf(tmp, "%d", data);
+                strcpy(src_s, tmp);
+            }
+
+        } else {
             printf("unknown op code");
-        }
-        int reg = (buffer[i + 1] >> 3) & 0b111;
-        int r_m = buffer[i + 1] & 0b111;
-
-        int src = 0;
-        int dst = 0;
-        if (d == 0) {
-            src = reg;
-            dst = r_m;
-        } else {
-            src = r_m;
-            dst = reg;
-        }
-        if (w == 0) {
-            printf("%s, %s\n", MOD_W0_NAMES[dst], MOD_W0_NAMES[src]);
-            fprintf(file, "%s, %s\n", MOD_W0_NAMES[dst], MOD_W0_NAMES[src]);
-        } else {
-            printf("%s, %s\n", MOD_W1_NAMES[dst], MOD_W1_NAMES[src]);
-            fprintf(file, "%s, %s\n", MOD_W1_NAMES[dst], MOD_W1_NAMES[src]);
-        }
+        };
+        printf("%s %s, %s\n", op_c, dst_s, src_s);
+        fprintf(file, "%s %s, %s\n", op_c, dst_s, src_s);
     }
 
     fclose(file);
@@ -88,7 +122,7 @@ int decodeASM(unsigned char* buffer, size_t size) {
 
 int main() {
     size_t fileSize = 0;
-    unsigned char* buffer = openFile("listing38", &fileSize);
+    unsigned char* buffer = openFile("listings/listing39", &fileSize);
     if (buffer == NULL) {
         fprintf(stderr, "Error reading file in main\n");
         return EXIT_FAILURE;
