@@ -78,6 +78,8 @@ int decodeASM(unsigned char* buffer, size_t size) {
             char r_m_s[20];
 
             const char** reg_names = (w == 0) ? REG_W0_NAMES : REG_W1_NAMES;
+            char data_s[20];
+            uint8_t data;
             switch (mod) {
             case 0b00:
                 strcpy(reg_s, reg_names[reg]);
@@ -85,14 +87,21 @@ int decodeASM(unsigned char* buffer, size_t size) {
                 break;
             case 0b01:
                 strcpy(reg_s, reg_names[reg]);
-                uint8_t data = buffer[i + 2];
+                data = buffer[i + 2];
                 i++;
+                sprintf(data_s, "%d]", data);
+                strcpy(r_m_s, MOD_01_10_NAMES[r_m]);
+                strcat(r_m_s, data_s);
+                break;
+            case 0b10:
+                strcpy(reg_s, reg_names[reg]);
+                uint16_t data = buffer[i + 2] | (uint16_t)buffer[i + 3] << 8;
+                i += 2;
                 char* data_s;
                 sprintf(data_s, "%d]", data);
                 strcpy(r_m_s, MOD_01_10_NAMES[r_m]);
                 strcat(r_m_s, data_s);
                 break;
-
             case 0b11:
                 strcpy(reg_s, reg_names[reg]);
                 strcpy(r_m_s, reg_names[r_m]);
