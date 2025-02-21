@@ -18,9 +18,9 @@ const char* REG_W1_NAMES[] = {"ax", "cx", "dx", "bx", "sp", "bp", "si", "di"};
 const char* RM_00_NAMES[] = {"[bx + si]",      "[bx + di]", "[bp + si]",
                              "[bp + di]",      "[si]",      "[di]",
                              "DIRECT ADDRESS", "[bx]"};
-const char* MOD_01_10_NAMES[] = {"[bx + si ", "[bx + di ", "[bp + si ",
-                                 "[bp + di ", "[si + ",    "[di + ",
-                                 "[bp + ",    "[bx + "};
+const char* MOD_01_10_NAMES[] = {"[bx + si + ", "[bx + di + ", "[bp + si + ",
+                                 "[bp + di + ", "[si + ",      "[di + ",
+                                 "[bp + ",      "[bx + "};
 
 unsigned char* openFile(const char* fileName, size_t* fileSize) {
     FILE* file = fopen(fileName, "rb");
@@ -61,8 +61,8 @@ int decodeASM(unsigned char* buffer, size_t size) {
 
     for (size_t i = 0; i < size; i += 2) {
         char op_c[4];
-        char dst_s[10];
-        char src_s[10];
+        char dst_s[20];
+        char src_s[20];
 
         uint8_t w = buffer[i] & 1;
         uint8_t d = (buffer[i] >> 1) & 1;
@@ -74,21 +74,31 @@ int decodeASM(unsigned char* buffer, size_t size) {
             uint8_t r_m = buffer[i + 1] & 0b111;
             uint8_t mod = buffer[i + 1] >> 6 & 0b11;
 
-            char reg_s[10];
-            char r_m_s[10];
+            char reg_s[20];
+            char r_m_s[20];
 
+            const char** reg_names = (w == 0) ? REG_W0_NAMES : REG_W1_NAMES;
             switch (mod) {
             case 0b00:
+                strcpy(reg_s, reg_names[reg]);
                 strcpy(r_m_s, RM_00_NAMES[r_m]);
+                break;
+            case 0b01:
+                strcpy(reg_s, reg_names[reg]);
+                uint8_t data = buffer[i + 2];
+                i++;
+                char* data_s;
+                sprintf(data_s, "%d]", data);
+                strcpy(r_m_s, MOD_01_10_NAMES[r_m]);
+                strcat(r_m_s, data_s);
+                break;
+
             case 0b11:
-                const char** mod_names = (w == 0) ? REG_W0_NAMES : REG_W1_NAMES;
-                strcpy(reg_s, mod_names[r_m]);
-                strcpy(r_m_s, mod_names[reg]);
+                strcpy(reg_s, reg_names[reg]);
+                strcpy(r_m_s, reg_names[r_m]);
                 break;
             }
 
-            // CHECK THIS!!!!!!
-            // the src and dst are swapped but this should be right
             char* src = (d == 0) ? reg_s : r_m_s;
             char* dst = (d == 0) ? r_m_s : reg_s;
             strcpy(src_s, src);

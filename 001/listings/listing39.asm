@@ -20,7 +20,7 @@ mov dx, -3948
 
 ; Source address calculation
 mov al, [bx + si]
-mv bx, [bp + di]
+mov bx, [bp + di]
 mov dx, [bp]
 
 ; Source address calculation plus 8-bit displacement
