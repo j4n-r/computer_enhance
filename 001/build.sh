@@ -1,4 +1,5 @@
 
 # e.g. "./build.sh 1_6"
 
-g++ -I.. ${1}.cpp ../sim86_lib.so -Wl,-rpath,../ -o ${1}
+pwd
+g++ 001/sim.cpp 001/sim86_lib.so -o 001/sim
