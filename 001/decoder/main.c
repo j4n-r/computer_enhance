@@ -146,7 +146,7 @@ int decodeASM(unsigned char* buffer, size_t size) {
 
 int main() {
     size_t fileSize = 0;
-    unsigned char* buffer = openFile("listings/listing39", &fileSize);
+    unsigned char* buffer = openFile("listings/listing_0046_immediate_movs", &fileSize);
     if (buffer == NULL) {
         fprintf(stderr, "Error reading file in main\n");
         return EXIT_FAILURE;
